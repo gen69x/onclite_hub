@@ -42,10 +42,11 @@ jobs:
           config: onclite-perf_defconfig
           arch: arm64
 
-# Toolchain: Proton Clang
+       # Toolchain: Proton Clang
           other-clang-url: https://github.com/kdrag0n/proton-clang
           other-clang-branch: master
-
+          aosp-gcc: true
+          
           # AnyKernel3
           anykernel3: true
           anykernel3-url: https://github.com/gen69x/AnyKernel3
