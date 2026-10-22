@@ -1,0 +1,105 @@
+name: Build Kernel Kara onclite (Proton Clang)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-kernel:
+    name: Build Kernel
+    runs-on: ubuntu-22.04
+    timeout-minutes: 150
+
+    steps:
+      # ========== Telegram: Build dimulai ==========
+      - name: Telegram - Build Started
+        run: |
+          MSG="🔨 <b>Build Kernel Dimulai</b>
+          
+          <b>Kernel:</b> <code>Kara onclite</code>
+          <b>Source:</b> <code>gen69x/kernel_xiaomi_onclite</code>
+          <b>Branch:</b> <code>los</code>
+          <b>Defconfig:</b> <code>onclite-perf_defconfig</code>
+          <b>Toolchain:</b> Proton Clang
+          <b>AnyKernel3:</b> gen69x/AnyKernel3
+          <b>Runner:</b> <a href=\"\( {GITHUB_SERVER_URL}/ \){GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">Lihat log</a>"
+
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TG_CHAT_ID }}" \
+            -d parse_mode=HTML \
+            -d disable_web_page_preview=true \
+            --data-urlencode text="$MSG" || true
+
+      # ========== Build dengan dabao1955 ==========
+      - name: Build Kernel
+        id: build
+        uses: dabao1955/kernel_build_action@main
+        with:
+          kernel-url: https://github.com/gen69x/kernel_xiaomi_onclite
+          kernel-branch: los
+          config: onclite-perf_defconfig
+          arch: arm64
+
+          # Toolchain: Proton Clang
+          other-clang-url: https://github.com/kdrag0n/proton-clang
+
+          # AnyKernel3
+          anykernel3: true
+          anykernel3-url: https://github.com/gen69x/AnyKernel3
+
+          # Auto GitHub Release
+          release: true
+          access-token: ${{ secrets.GITHUB_TOKEN }}
+
+          # Opsional (kalau error LTO di kernel 4.9)
+          # disable-lto: true
+
+      # ========== Cari file ZIP hasil build ==========
+      - name: Find ZIP file
+        id: findzip
+        if: success()
+        run: |
+          ZIP=$(find . -maxdepth 3 -name "*.zip" -type f | head -n 1)
+          if [ -z "$ZIP" ]; then
+            echo "❌ ZIP tidak ditemukan"
+            ls -la
+            exit 1
+          fi
+          echo "Found: $ZIP"
+          echo "zip_path=$ZIP" >> $GITHUB_OUTPUT
+          echo "zip_name=$(basename $ZIP)" >> $GITHUB_OUTPUT
+
+      # ========== Telegram: Kirim ZIP + sukses ==========
+      - name: Telegram - Send ZIP + Success
+        if: success()
+        run: |
+          SHA=\( (sha256sum " \){{ steps.findzip.outputs.zip_path }}" | cut -d' ' -f1)
+          CAPTION="✅ <b>Build Sukses</b>
+          
+          <b>Kernel:</b> Kara onclite
+          <b>Branch:</b> los
+          <b>Toolchain:</b> Proton Clang
+          <b>SHA256:</b> <code>${SHA}</code>
+          <b>Release:</b> <a href=\"\( {GITHUB_SERVER_URL}/ \){GITHUB_REPOSITORY}/releases\">Lihat Release</a>"
+
+          curl -s -F chat_id="${{ secrets.TG_CHAT_ID }}" \
+            -F document=@"${{ steps.findzip.outputs.zip_path }}" \
+            -F parse_mode=HTML \
+            -F caption="$CAPTION" \
+            "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendDocument" || true
+
+      # ========== Telegram: Build gagal ==========
+      - name: Telegram - Build Failed
+        if: failure()
+        run: |
+          MSG="❌ <b>Build Gagal</b>
+          
+          <b>Kernel:</b> Kara onclite (los)
+          <a href=\"\( {GITHUB_SERVER_URL}/ \){GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\">Lihat log lengkap</a>"
+
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TG_CHAT_ID }}" \
+            -d parse_mode=HTML \
+            --data-urlencode text="$MSG" || true
