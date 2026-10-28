@@ -1,0 +1,33 @@
+name: Build Kernel (test-merge)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - test-merge
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Kara onclite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Kernel
+        uses: dabao1955/kernel_build_action@main
+        with:
+          kernel-url: https://github.com/gen69x/kernel_xiaomi_onclite
+          kernel-branch: test-merge
+          config: onclite-perf_defconfig
+          arch: arm64
+          aosp-gcc: true
+          other-clang-url: https://github.com/kdrag0n/proton-clang
+          other-clang-branch: master
+          anykernel3: true
+          anykernel3-url: https://github.com/gen69x/AnyKernel3
+          release: true
+          access-token: ${{ secrets.GITHUB_TOKEN }}
