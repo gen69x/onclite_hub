@@ -1,4 +1,4 @@
-name: Build Kernel Manual
+name: Build Kernel
 
 on:
   workflow_dispatch:
@@ -7,34 +7,31 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout kernel
+        uses: actions/checkout@v4
         with:
           repository: gen69x/kernel_xiaomi_onclite
           ref: test-merge
-          path: kernel
 
-      - name: Setup Proton Clang
-        run: |
-          git clone --depth=1 -b master https://github.com/kdrag0n/proton-clang clang
-          echo "$GITHUB_WORKSPACE/clang/bin" >> $GITHUB_PATH
+      - name: Checkout AnyKernel3
+        uses: actions/checkout@v4
+        with:
+          repository: gen69x/AnyKernel3
+          path: zipper
 
       - name: Build
-        working-directory: kernel
-        run: |
-          export ARCH=arm64
-          export CROSS_COMPILE=aarch64-linux-gnu-
-          export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
-          export CLANG_TRIPLE=aarch64-linux-gnu-
-          make O=out onclite-perf_defconfig
-          make O=out -j$(nproc) CC=clang
-
-      - name: Package AnyKernel3
-        run: |
-          git clone --depth=1 https://github.com/gen69x/AnyKernel3 ak3
-          cp kernel/out/arch/arm64/boot/Image.gz-dtb ak3/
-          cd ak3 && zip -r9 ../Kara-onclite.zip * -x .git* README.md
-
-      - uses: actions/upload-artifact@v4
+        uses: lemniskett/android-kernel-actions@master
+        id: build
+        env:
+          NAME: Kara-onclite
         with:
-          name: Kara-onclite
-          path: Kara-onclite.zip
+          arch: arm64
+          compiler: proton-clang/master
+          defconfig: onclite-perf_defconfig
+          image: Image.gz-dtb
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-zip
+          path: ${{ steps.build.outputs.outfile }}
